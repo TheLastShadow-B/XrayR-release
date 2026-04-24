@@ -203,6 +203,9 @@ install_mgmt_script() {
 
 # 比对本地 /etc/XrayR/ 下的模板文件与发行包中的新模板，内容不同则写 .new 并提示
 # 用户手动合并。本函数从不修改既有配置本身（与 R7 一致）。
+#
+# 比较时忽略纯注释行（`^\s*#`）和空行：YAML/rulelist 的注释 typo 或空行调整
+# 不再触发 banner；JSON 文件没有 # 注释，效果退化为仅忽略空行。
 DRIFTED_FILES=()
 check_config_drift() {
     local f src dst
@@ -210,7 +213,7 @@ check_config_drift() {
         src="/usr/local/XrayR/$f"
         dst="/etc/XrayR/$f"
         [[ -f "$src" && -f "$dst" ]] || continue
-        if ! cmp -s "$src" "$dst"; then
+        if ! diff -q -B -I '^[[:space:]]*#' "$src" "$dst" >/dev/null 2>&1; then
             cp -f "$src" "${dst}.new"
             DRIFTED_FILES+=("$f")
         else
