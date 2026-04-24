@@ -22,17 +22,20 @@ Nodes:
       NodeType: V2ray # Node type: V2ray, Vmess, Vless, Shadowsocks, Trojan, Shadowsocks-Plugin
       Timeout: 30 # Timeout for the api request
       EnableVless: false # Enable Vless for V2ray Type
-      EnableXTLS: false # Enable XTLS for V2ray and Trojan
       SpeedLimit: 0 # Mbps, Local settings will replace remote settings, 0 means disable
       DeviceLimit: 0 # Local settings will replace remote settings, 0 means disable
       RuleListPath: # /etc/XrayR/rulelist Path to local rulelist file
     ControllerConfig:
       ListenIP: 0.0.0.0 # IP address you want to listen
-      SendIP: 0.0.0.0 # IP address you want to send pacakage
+      SendIP: 0.0.0.0 # IP address you want to send package
       UpdatePeriodic: 60 # Time to update the nodeinfo, how many sec.
       EnableDNS: false # Use custom DNS config, Please ensure that you set the dns.json well
       DNSType: AsIs # AsIs, UseIP, UseIPv4, UseIPv6, DNS strategy
       EnableProxyProtocol: false # Only works for WebSocket and TCP
+      DisableSniffing: false # Disable destination sniffing; recommend true on QUIC/Hysteria2
+      DisableIVCheck: false # Disable Shadowsocks IV replay check
+      DisableUploadTraffic: false # Stop reporting traffic stats to panel (debug only)
+      DisableGetRule: false # Stop fetching audit rule list from panel
       AutoSpeedLimitConfig:
         Limit: 0 # Warned speed. Set to 0 to disable AutoSpeedLimit (mbps)
         WarnTimes: 0 # After (WarnTimes) consecutive warnings, the user will be limited. Set to 0 to punish overspeed user immediately.
@@ -52,7 +55,22 @@ Nodes:
           Alpn: # Alpn, Empty for any
           Path: # HTTP PATH, Empty for any
           Dest: 80 # Required, Destination of fallback, check https://xtls.github.io/config/features/fallback.html for details.
-          ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for dsable
+          ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for disable
+      DisableLocalREALITYConfig: false # If true, ignore REALITYConfigs below and only trust panel-pushed REALITY config
+      EnableREALITY: false # Enable REALITY TLS-on-TCP disguise (V2ray/Vless + TCP only)
+      REALITYConfigs: # Used when EnableREALITY is true; see https://github.com/XTLS/REALITY
+        Show: false # Print REALITY handshake debug info
+        Dest: www.example.com:443 # Real upstream REALITY impersonates on handshake
+        ProxyProtocolVer: 0 # 0 to disable
+        ServerNames:
+          - www.example.com # Accepted SNI list; client SNI must match one entry
+        PrivateKey: # Generate via `xray x25519`; share the matching PublicKey to clients
+        MinClientVer: # Minimum Xray client version; empty = no limit
+        MaxClientVer: # Maximum Xray client version; empty = no limit
+        MaxTimeDiff: 0 # Allowed clock skew in ms; 0 disables the check
+        ShortIds:
+          - "" # Empty = any; add hex strings (0-16 chars, even length) for multi-tenant
+          - 0123456789abcdef
       CertConfig:
         CertMode: dns # Option about how to get certificate: none, file, http, tls, dns. Choose "none" will forcedly disable the tls config.
         CertDomain: "node1.test.com" # Domain to cert

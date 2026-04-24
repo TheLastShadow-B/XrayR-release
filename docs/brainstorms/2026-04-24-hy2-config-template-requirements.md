@@ -26,11 +26,24 @@ These are footguns that surface at deployment time, not parse time. The template
 
 ## Non-Goals
 
-- Refreshing the active V2ray example block (adding `DisableSniffing` / `DisableIVCheck` / REALITY fields to it). Deferred — user scoped this pass to the Hy2 block only.
 - Creating a separate `config/config.hy2.example.yml`. Discussed and rejected in favor of in-place expansion.
 - Moving the `custom_config` JSON snippet to `README.md`. Discussed and rejected — keeping it inline makes the template self-contained.
 - Ordering spike work for the Hy2 rate-limit bridge. The template surfaces the uncertainty; fixing it is a XrayR-repo concern.
 - Editing `install.sh` packaging rules or `R22` (drift detection) coverage lists. The edited block stays inside `config/config.yml`, which `install.sh` already ships and `R22` already watches.
+
+## Functional Requirements — V2ray active block (added in follow-up pass)
+
+- **V1** Drop `ApiConfig.EnableXTLS: false`. Field removed from `XrayR/api/apimodel.go`; leaving it implies XTLS is still a valid choice.
+- **V2** Add five `ControllerConfig` boolean fields the backend has supported for a while but which never landed in this template:
+  - `DisableSniffing: false` — with a comment suggesting `true` on QUIC/Hy2 nodes (ties in with the Hy2 block's H7).
+  - `DisableIVCheck: false` — Shadowsocks IV replay toggle.
+  - `DisableUploadTraffic: false` — debug-only escape hatch.
+  - `DisableGetRule: false` — debug-only escape hatch.
+  - `DisableLocalREALITYConfig: false` — grouped next to the REALITY fields per struct order.
+- **V3** Add `EnableREALITY: false` + a fully-commented `REALITYConfigs:` sub-block (`Show`, `Dest`, `ProxyProtocolVer`, `ServerNames`, `PrivateKey`, `MinClientVer`, `MaxClientVer`, `MaxTimeDiff`, `ShortIds`). Values are placeholder — operators who flip `EnableREALITY: true` then need to supply real `PrivateKey` (`xray x25519`) and adjust `Dest` / `ServerNames`.
+- **V4** Typos: `pacakage` → `package` (line 31 of the original file), `dsable` → `disable` (original line 55).
+
+Scope guard: the block stays in English (matches the rest of the V2ray example, which predates the fork's Chinese commentary style). The Hy2 block stays Chinese per H10.
 
 ## Functional Requirements
 
@@ -90,3 +103,4 @@ These are footguns that surface at deployment time, not parse time. The template
 
 - **2026-04-24** — ce-brainstorm captured Approach A (patch Hy2 block only) from user.
 - **2026-04-24** — User override: include `AutoSpeedLimitConfig` / `GlobalDeviceLimitConfig` in the example after all, with explicit spike-pending uncertainty note (H6). Original draft had dropped them to avoid overclaiming; user preferred "show with honest caveat" over "hide."
+- **2026-04-24** — Scope expansion: user flagged the V2ray active block as "not updated yet." Promoted to in-scope; added V1-V4. Verified each new field against `XrayR/service/controller/config.go` and confirmed `EnableXTLS` was removed from `XrayR/api/apimodel.go` before dropping it from the template.
