@@ -89,3 +89,29 @@ Nodes:
   #       DNSEnv: # DNS ENV option used by DNS provider
   #         ALICLOUD_ACCESS_KEY: aaa
   #         ALICLOUD_SECRET_KEY: bbb
+  # -
+  #   # Hysteria 2 节点示例（UDP 协议）
+  #   # 注意：
+  #   #   1. ListenIP/节点端口在 Hy2 上生效于 UDP，防火墙/安全组需放行对应 UDP 端口。
+  #   #   2. CertConfig.CertMode 必须是 file / http / dns。设为 none 会在启动时被 XrayR 拒绝。
+  #   PanelType: "SSpanel" # Panel type: SSpanel, V2board, NewV2board, PMpanel, Proxypanel, V2RaySocks
+  #   ApiConfig:
+  #     ApiHost: "http://127.0.0.1:667"
+  #     ApiKey: "123"
+  #     NodeID: 42
+  #     NodeType: Hysteria2 # 必须精确匹配字符串 Hysteria2
+  #     Timeout: 30
+  #     SpeedLimit: 0
+  #     DeviceLimit: 0
+  #   ControllerConfig:
+  #     ListenIP: 0.0.0.0
+  #     SendIP: 0.0.0.0
+  #     UpdatePeriodic: 60
+  #     CertConfig:
+  #       CertMode: dns # 不可为 none；Hy2 要求 TLS
+  #       CertDomain: "hy2.test.com"
+  #       Provider: cloudflare
+  #       Email: test@me.com
+  #       DNSEnv:
+  #         CF_API_EMAIL: you@example.com
+  #         CF_API_KEY: your_api_key

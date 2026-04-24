@@ -1,118 +1,80 @@
-# XRayR
+# XrayR
+
 A Xray backend framework that can easily support many panels.
 
-一个基于Xray的后端框架，支持V2ay,Trojan,Shadowsocks协议，极易扩展，支持多面板对接
+一个基于 Xray 的后端框架，支持 V2ray、Trojan、Shadowsocks、Hysteria 2 协议，极易扩展，支持多面板对接。
 
-Find the source code here: [TheLastShadow-B/XrayR](https://github.com/TheLastShadow-B/XrayR)
+Source code: [TheLastShadow-B/XrayR](https://github.com/TheLastShadow-B/XrayR)
 
-# 详细使用教程
+## 系统要求
 
-[教程](https://xrayr-project.github.io/XrayR-doc/)
+- **OS**: Debian 12 (Bookworm) 或 Debian 13 (Trixie)
+- **架构**: x86_64 / amd64
+- 其他系统请使用仓库的历史 release tag: <https://github.com/TheLastShadow-B/XrayR-release/releases>
 
-# 一键安装
+## 一键安装
 
-```
+```bash
 bash <(curl -Ls https://raw.githubusercontent.com/TheLastShadow-B/XrayR-release/master/install.sh)
 ```
-# Docker 安装
+
+安装脚本会校验发行包的 SHA256（失败即终止），支持幂等升级（保留 `/etc/XrayR/` 现有配置与 `cert/` 目录），并在检测到 `NodeType: Hysteria2` 时提示 TLS / UDP 前置条件。
+
+指定版本：
+
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/TheLastShadow-B/XrayR-release/master/install.sh) v1.2.3
+```
+
+## 管理脚本
+
+安装完成后，终端执行 `XrayR`（或小写 `xrayr`）进入管理菜单。常用子命令：
 
 ```
-docker pull ghcr.io/xrayr-project/xrayr:latest && docker run --restart=always --name xrayr -d -v ${PATH_TO_CONFIG}/config.yml:/etc/XrayR/config.yml --network=host ghcr.io/xrayr-project/xrayr:latest
+XrayR start | stop | restart | status | log
+XrayR update [x.y.z]    # 更新到最新版或指定版本
+XrayR config            # 编辑 /etc/XrayR/config.yml
+XrayR uninstall         # 卸载
+XrayR version
 ```
 
-# Docker compose 安装
-0. 安装docker-compose: 
+管理菜单内的 "一键安装 BBR" 通过写入 `/etc/sysctl.d/99-bbr.conf` 并 `sysctl --system` 原生启用 BBR，不再下载外部脚本。受限虚拟化方案（OpenVZ、非特权 LXC）会给出明确提示。
+
+## Docker 安装
+
+> 目前镜像仍引用上游 `ghcr.io/xrayr-project/xrayr`。本仓库计划发布 fork 自有镜像后会更新此处（见 OQ2）。
+
+```bash
+docker pull ghcr.io/xrayr-project/xrayr:latest
+docker run --restart=always --name xrayr -d \
+  -v ${PATH_TO_CONFIG}/config.yml:/etc/XrayR/config.yml \
+  --network=host \
+  ghcr.io/xrayr-project/xrayr:latest
 ```
+
+## Docker Compose 安装
+
+Debian 12/13 安装 Docker + Compose 插件：
+
+```bash
 curl -fsSL https://get.docker.com | bash -s docker
-curl -L "https://github.com/docker/compose/releases/download/1.26.1/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-chmod +x /usr/local/bin/docker-compose
-```
-1. `git clone https://github.com/TheLastShadow-B/XrayR-release`
-2. `cd XrayR-release`
-3. 编辑config。
-配置文件基本格式如下，Nodes下可以同时添加多个面板，多个节点配置信息，只需添加相同格式的Nodes item即可。
-4. 启动docker：`docker-compose up -d`
-```
-Log:
-  Level: none # Log level: none, error, warning, info, debug 
-  AccessPath: # /etc/XrayR/access.Log
-  ErrorPath: # /etc/XrayR/error.log
-DnsConfigPath: # /etc/XrayR/dns.json Path to dns config
-ConnetionConfig:
-  Handshake: 4 # Handshake time limit, Second
-  ConnIdle: 10 # Connection idle time limit, Second
-  UplinkOnly: 2 # Time limit when the connection downstream is closed, Second
-  DownlinkOnly: 4 # Time limit when the connection is closed after the uplink is closed, Second
-  BufferSize: 64 # The internal cache size of each connection, kB 
-Nodes:
-  -
-    PanelType: "SSpanel" # Panel type: SSpanel, V2board, PMpanel
-    ApiConfig:
-      ApiHost: "http://127.0.0.1:667"
-      ApiKey: "123"
-      NodeID: 41
-      NodeType: V2ray # Node type: V2ray, Shadowsocks, Trojan
-      Timeout: 30 # Timeout for the api request
-      EnableVless: false # Enable Vless for V2ray Type
-      EnableXTLS: false # Enable XTLS for V2ray and Trojan
-      SpeedLimit: 0 # Mbps, Local settings will replace remote settings, 0 means disable
-      DeviceLimit: 0 # Local settings will replace remote settings, 0 means disable
-      RuleListPath: # /etc/XrayR/rulelist Path to local rulelist file
-    ControllerConfig:
-      ListenIP: 0.0.0.0 # IP address you want to listen
-      SendIP: 0.0.0.0 # IP address you want to send pacakage
-      UpdatePeriodic: 60 # Time to update the nodeinfo, how many sec.
-      EnableDNS: false # Use custom DNS config, Please ensure that you set the dns.json well
-      DNSType: AsIs # AsIs, UseIP, UseIPv4, UseIPv6, DNS strategy
-      EnableProxyProtocol: false # Only works for WebSocket and TCP
-      EnableFallback: false # Only support for Trojan and Vless
-      FallBackConfigs:  # Support multiple fallbacks
-        -
-          SNI: # TLS SNI(Server Name Indication), Empty for any
-          Path: # HTTP PATH, Empty for any
-          Dest: 80 # Required, Destination of fallback, check https://xtls.github.io/config/fallback/ for details.
-          ProxyProtocolVer: 0 # Send PROXY protocol version, 0 for dsable
-      CertConfig:
-        CertMode: dns # Option about how to get certificate: none, file, http, dns. Choose "none" will forcedly disable the tls config.
-        CertDomain: "node1.test.com" # Domain to cert
-        CertFile: /etc/XrayR/cert/node1.test.com.cert # Provided if the CertMode is file
-        KeyFile: /etc/XrayR/cert/node1.test.com.key
-        Provider: alidns # DNS cert provider, Get the full support list here: https://go-acme.github.io/lego/dns/
-        Email: test@me.com
-        DNSEnv: # DNS ENV option used by DNS provider
-          ALICLOUD_ACCESS_KEY: aaa
-          ALICLOUD_SECRET_KEY: bbb
-  # -
-  #   PanelType: "V2board" # Panel type: SSpanel, V2board
-  #   ApiConfig:
-  #     ApiHost: "http://127.0.0.1:668"
-  #     ApiKey: "123"
-  #     NodeID: 4
-  #     NodeType: Shadowsocks # Node type: V2ray, Shadowsocks, Trojan
-  #     Timeout: 30 # Timeout for the api request
-  #     EnableVless: false # Enable Vless for V2ray Type
-  #     EnableXTLS: false # Enable XTLS for V2ray and Trojan
-  #     SpeedLimit: 0 # Mbps, Local settings will replace remote settings
-  #     DeviceLimit: 0 # Local settings will replace remote settings
-  #   ControllerConfig:
-  #     ListenIP: 0.0.0.0 # IP address you want to listen
-  #     UpdatePeriodic: 10 # Time to update the nodeinfo, how many sec.
-  #     EnableDNS: false # Use custom DNS config, Please ensure that you set the dns.json well
-  #     CertConfig:
-  #       CertMode: dns # Option about how to get certificate: none, file, http, dns
-  #       CertDomain: "node1.test.com" # Domain to cert
-  #       CertFile: /etc/XrayR/cert/node1.test.com.cert # Provided if the CertMode is file
-  #       KeyFile: /etc/XrayR/cert/node1.test.com.pem
-  #       Provider: alidns # DNS cert provider, Get the full support list here: https://go-acme.github.io/lego/dns/
-  #       Email: test@me.com
-  #       DNSEnv: # DNS ENV option used by DNS provider
-  #         ALICLOUD_ACCESS_KEY: aaa
-  #         ALICLOUD_SECRET_KEY: bbb
+apt-get install -y docker-compose-plugin
 ```
 
-## Docker compose升级
-在docker-compose.yml目录下执行：
+拉起服务：
+
+```bash
+git clone https://github.com/TheLastShadow-B/XrayR-release
+cd XrayR-release
+# 编辑 config/config.yml
+docker compose up -d
 ```
-docker-compose pull
-docker-compose up -d
+
+配置文件基本格式见 [`config/config.yml`](config/config.yml)。Hysteria 2 节点示例已以注释形式内置，解除注释并按需修改即可。
+
+## Docker Compose 升级
+
+```bash
+docker compose pull
+docker compose up -d
 ```

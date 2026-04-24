@@ -5,53 +5,24 @@ green='\033[0;32m'
 yellow='\033[0;33m'
 plain='\033[0m'
 
-version="v1.0.0"
+version="v1.1.0"
 
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}错误: ${plain} 必须使用root用户运行此脚本！\n" && exit 1
 
-# check os
-if [[ -f /etc/redhat-release ]]; then
-    release="centos"
-elif cat /etc/issue | grep -Eqi "debian"; then
-    release="debian"
-elif cat /etc/issue | grep -Eqi "ubuntu"; then
-    release="ubuntu"
-elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
-    release="centos"
-elif cat /proc/version | grep -Eqi "debian"; then
-    release="debian"
-elif cat /proc/version | grep -Eqi "ubuntu"; then
-    release="ubuntu"
-elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
-    release="centos"
-else
-    echo -e "${red}未检测到系统版本，请联系脚本作者！${plain}\n" && exit 1
+# check os — Debian 12 / 13 only
+if [[ ! -r /etc/os-release ]]; then
+    echo -e "${red}无法读取 /etc/os-release，本脚本仅支持 Debian 12/13${plain}\n" && exit 1
 fi
-
-os_version=""
-
-# os version
-if [[ -f /etc/os-release ]]; then
-    os_version=$(awk -F'[= ."]' '/VERSION_ID/{print $3}' /etc/os-release)
+# shellcheck disable=SC1091
+. /etc/os-release
+if [[ "${ID:-}" != "debian" ]] || ! [[ "${VERSION_ID:-}" =~ ^(12|12\.[0-9]+|13|13\.[0-9]+)$ ]]; then
+    echo -e "${red}本脚本仅支持 Debian 12 (Bookworm) 或 13 (Trixie)，检测到 ID=${ID:-unknown} VERSION_ID=${VERSION_ID:-unknown}${plain}\n"
+    echo -e "其他系统请使用旧版 release tag: https://github.com/TheLastShadow-B/XrayR-release/releases\n"
+    exit 1
 fi
-if [[ -z "$os_version" && -f /etc/lsb-release ]]; then
-    os_version=$(awk -F'[= ."]+' '/DISTRIB_RELEASE/{print $2}' /etc/lsb-release)
-fi
-
-if [[ x"${release}" == x"centos" ]]; then
-    if [[ ${os_version} -le 6 ]]; then
-        echo -e "${red}请使用 CentOS 7 或更高版本的系统！${plain}\n" && exit 1
-    fi
-elif [[ x"${release}" == x"ubuntu" ]]; then
-    if [[ ${os_version} -lt 16 ]]; then
-        echo -e "${red}请使用 Ubuntu 16 或更高版本的系统！${plain}\n" && exit 1
-    fi
-elif [[ x"${release}" == x"debian" ]]; then
-    if [[ ${os_version} -lt 8 ]]; then
-        echo -e "${red}请使用 Debian 8 或更高版本的系统！${plain}\n" && exit 1
-    fi
-fi
+release="debian"
+os_version="${VERSION_ID}"
 
 confirm() {
     if [[ $# > 1 ]]; then
@@ -257,16 +228,44 @@ show_log() {
 }
 
 install_bbr() {
-    bash <(curl -L -s https://raw.githubusercontent.com/chiakge/Linux-NetSpeed/master/tcp.sh)
-    #if [[ $? == 0 ]]; then
-    #    echo ""
-    #    echo -e "${green}安装 bbr 成功，请重启服务器${plain}"
-    #else
-    #    echo ""
-    #    echo -e "${red}下载 bbr 安装脚本失败，请检查本机能否连接 Github${plain}"
-    #fi
+    # R13: 内联 sysctl 启用 BBR；不再依赖外部 curl | bash 脚本
+    local conf=/etc/sysctl.d/99-bbr.conf
 
-    #before_show_menu
+    # 符号链接攻击防护
+    if [[ ! -d /etc/sysctl.d || -L /etc/sysctl.d ]]; then
+        echo -e "${red}/etc/sysctl.d 不是实际目录（可能是符号链接），拒绝写入${plain}"
+        before_show_menu
+        return 1
+    fi
+
+    cat > "$conf" <<'EOF'
+net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
+EOF
+
+    if ! sysctl --system >/dev/null 2>&1; then
+        echo -e "${red}sysctl --system 执行失败（可能是受限虚拟化方案如 OpenVZ / 非特权 LXC 禁止修改 sysctl）${plain}"
+        echo -e "${yellow}BBR 需要在宿主机启用，容器内无法生效${plain}"
+        before_show_menu
+        return 1
+    fi
+
+    local cc qd
+    cc=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "")
+    qd=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "")
+
+    if [[ "$cc" == "bbr" && "$qd" == "fq" ]]; then
+        echo -e "${green}BBR 启用成功${plain}"
+        echo -e "  tcp_congestion_control = ${cc}"
+        echo -e "  default_qdisc          = ${qd}"
+    else
+        echo -e "${red}BBR 启用失败（sysctl 写入成功但未生效）${plain}"
+        echo -e "  tcp_congestion_control = ${cc:-<empty>}"
+        echo -e "  default_qdisc          = ${qd:-<empty>}"
+        echo -e "${yellow}可能内核不支持 BBR（Debian 12/13 默认支持），或被容器方案限制${plain}"
+    fi
+
+    before_show_menu
 }
 
 update_shell() {
